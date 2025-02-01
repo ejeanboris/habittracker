@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env: 
-      GITEA_SERVER: https://git.rehounou.ca
-      GITEA_REGISTRY: git.rehounou.ca
+      GITEA_SERVER: ${{ vars.ADDRESS_GITEA_SERVER}}
+      GITEA_REGISTRY: ${{ vars.ADDRESS_GITEA_REGISTRY }}
       GITEA_TOKEN: ${{ secrets.REPO_GITEA_TOKEN }}
-      PROJECT_NAME: cal_heatmap
+      PROJECT_NAME: ${{ vars.project_name }}
 
     steps:
       - name: Checkout repository
@@ -44,12 +44,12 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/cal_heatmap:latest
-            ${{ secrets.DOCKER_USERNAME }}/cal_heatmap:1.0.0
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:1.0.0
 
       - name: Build and Push Docker Image
         run: |
-          docker tag ${{ secrets.DOCKER_USERNAME }}/cal_heatmap:latest git.rehounou.ca/remi/cal_heatmap:1.0.0
-          docker push git.rehounou.ca/remi/cal_heatmap:latest
-          docker push git.rehounou.ca/remi/cal_heatmap:1.0.0
+          docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:1.0.0
+          docker push ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
+          docker push ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:1.0.0
       
