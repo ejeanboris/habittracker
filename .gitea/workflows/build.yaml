@@ -49,6 +49,7 @@ jobs:
 
       - name: Build and Push Docker Image to Gitea Release
         run: |
+          docker image ls
           docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.PROJECT_NAME }}:latest ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:1.0.0
           docker push ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:latest
           docker push ${{ env.GITEA_REGISTRY }}/${{ env.PROJECT_NAME }}:1.0.0
