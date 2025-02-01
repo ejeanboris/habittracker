@@ -1,0 +1,6 @@
+calmap==0.0.11
+datetime==5.5
+pip-chill==1.0.3
+plotly==5.24.1
+streamlit==1.41.1
+vobject==0.9.9
