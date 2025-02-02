@@ -6,6 +6,7 @@ import ics
 import os
 from ics import Calendar, Event
 from io import BytesIO
+import plotly.graph_objects as go
 
 DATA_FILE = "habits.csv"
 
@@ -88,7 +89,7 @@ if not data.empty:
         save_data()
         st.success("Habit logged successfully!")
 
-# Calendar View
+# Display habits in a real calendar
 st.subheader("Scheduled Habits Calendar")
 if not data.empty:
     events = []
@@ -103,8 +104,13 @@ if not data.empty:
             events.append((date, habit_name))
     
     calendar_df = pd.DataFrame(events, columns=["Date", "Habit"])
-    st.write("### Habit Calendar")
-    st.dataframe(calendar_df)
+    fig = go.Figure()
+    for habit in calendar_df["Habit"].unique():
+        habit_events = calendar_df[calendar_df["Habit"] == habit]
+        fig.add_trace(go.Scatter(x=habit_events["Date"], y=[habit]*len(habit_events), mode='markers', name=habit))
+    
+    fig.update_layout(title="Habit Calendar", xaxis_title="Date", yaxis_title="Habits", showlegend=True)
+    st.plotly_chart(fig)
 
 # Generate and share ICS Calendar
 st.subheader("Download Calendar")
