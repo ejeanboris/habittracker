@@ -1,137 +1,129 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import seaborn as sns
-import matplotlib.pyplot as plt
-import random
-import numpy as np
+import uuid
+import ics
+import os
+from ics import Calendar, Event
+from io import BytesIO
 
-# Load or initialize habit data
+DATA_FILE = "habits.csv"
+
+# Load habit data
 def load_data():
-    try:
-        df = pd.read_csv("habits.csv")
-        if "Completed" in df.columns:
-            df["Completed"] = df["Completed"].astype(bool)
-        return df
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["Date", "Habit", "Completed"])
+    if os.path.exists(DATA_FILE):
+        return pd.read_csv(DATA_FILE)
+    else:
+        return pd.DataFrame(columns=["id", "name", "repeat", "start_date", "end_date", "type", "logs"])
 
-def save_data(df):
-    df.to_csv("habits.csv", index=False)
+data = load_data()
 
-# Generate dummy data for testing (Optional)
-def generate_dummy_data():
-    habits = ["Exercise", "Read", "Meditate", "Code", "Drink Water"]
-    dates = pd.date_range(start="2024-01-01", periods=365).strftime("%Y-%m-%d").tolist()
-    data = []
-    for date in dates:
-        for habit in habits:
-            data.append([date, habit, random.choice([True, False])])
-    return pd.DataFrame(data, columns=["Date", "Habit", "Completed"])
+# Save data function
+def save_data():
+    data.to_csv(DATA_FILE, index=False)
 
-# Optionally generate dummy data only if needed
-if st.sidebar.checkbox("Generate Dummy Data for Testing"):
-    df = load_data()
-    dummy_data = generate_dummy_data()
-    df = pd.concat([df, dummy_data], ignore_index=True).drop_duplicates()
-    save_data(df)
-
-# Streamlit UI
+# UI title
 st.title("Habit Tracker")
 
-today = str(datetime.date.today())
-current_week = datetime.date.today().isocalendar()[1]
+# Section to add a new habit
+st.subheader("Add a New Habit")
+name = st.text_input("Habit Name")
+repeat = st.selectbox("Repeatability", ["Daily", "Weekly", "Monthly", "Yearly"])
+start_date = st.date_input("Start Date", datetime.date.today())
+end_date = st.date_input("End Date", datetime.date.today())
+habit_type = st.selectbox("Habit Type", ["Done/Not Done", "Progress"])
 
-# Load existing data
-df = load_data()
-
-df_today = df[df["Date"] == today]
-
-# Check off daily habits section at the top
-st.subheader("Check Off Today's Habits")
-for index, row in df_today.iterrows():
-    checked = st.checkbox(row["Habit"], value=row["Completed"], key=f"habit_{index}")
-    if checked != row["Completed"]:
-        df.at[index, "Completed"] = checked
-        save_data(df)
-        st.rerun()
-
-st.subheader("Track Today's Habits")
-habit = st.text_input("Add a new habit:")
 if st.button("Add Habit"):
-    if habit and habit not in df_today["Habit"].values:
-        new_entry = pd.DataFrame([[today, habit, False]], columns=["Date", "Habit", "Completed"])
-        df = pd.concat([df, new_entry], ignore_index=True)
-        save_data(df)
-        st.rerun()
+    new_habit = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "repeat": repeat,
+        "start_date": start_date,
+        "end_date": end_date,
+        "type": habit_type,
+        "logs": "{}",
+    }
+    data = pd.concat([data, pd.DataFrame([new_habit])], ignore_index=True)
+    save_data()
+    st.success("Habit added successfully!")
+    st.rerun()
 
-# Log habit completion
+# Sidebar for managing habits
+st.sidebar.subheader("Manage Habits")
+if not data.empty:
+    habit_selection = st.sidebar.selectbox("Select a habit to edit/remove", data["name"] if not data.empty else ["No habits available"])
+    
+    if habit_selection and habit_selection in data["name"].values:
+        habit_id = data[data["name"] == habit_selection]["id"].values[0]
+        
+        if st.sidebar.button("Remove Habit"):
+            data = data[data["id"] != habit_id]
+            save_data()
+            st.sidebar.success("Habit removed successfully!")
+            st.rerun()
+        
+        st.sidebar.subheader("Edit Habit")
+        new_name = st.sidebar.text_input("Edit Habit Name", habit_selection)
+        habit_row = data[data["id"] == habit_id]
+        if not habit_row.empty:
+            new_repeat = st.sidebar.selectbox("Edit Repeatability", ["Daily", "Weekly", "Monthly", "Yearly"], index=["Daily", "Weekly", "Monthly", "Yearly"].index(habit_row["repeat"].values[0]))
+            new_start_date = st.sidebar.date_input("Edit Start Date", habit_row["start_date"].values[0])
+            new_end_date = st.sidebar.date_input("Edit End Date", habit_row["end_date"].values[0])
+            new_type = st.sidebar.selectbox("Edit Habit Type", ["Done/Not Done", "Progress"], index=["Done/Not Done", "Progress"].index(habit_row["type"].values[0]))
+            
+            if st.sidebar.button("Update Habit"):
+                data.loc[data["id"] == habit_id, ["name", "repeat", "start_date", "end_date", "type"]] = [new_name, new_repeat, new_start_date, new_end_date, new_type]
+                save_data()
+                st.sidebar.success("Habit updated successfully!")
+
+# Log habits section
 st.subheader("Log Habit Completion")
-habit_to_log = st.selectbox("Select a habit to log:", df["Habit"].unique())
-date_to_log = st.date_input("Select a date:", datetime.date.today())
-if st.button("Log Habit"):
-    date_str = str(date_to_log)
-    if not df[(df["Date"] == date_str) & (df["Habit"] == habit_to_log)].empty:
-        df.loc[(df["Date"] == date_str) & (df["Habit"] == habit_to_log), "Completed"] = True
-        save_data(df)
-        st.rerun()
-    else:
-        st.warning("This habit is not listed for the selected date. Please add it first.")
+if not data.empty:
+    log_habit = st.selectbox("Select Habit to Log", data["name"])
+    log_date = st.date_input("Date of Completion", datetime.date.today())
+    
+    if st.button("Log Habit"):
+        habit_id = data[data["name"] == log_habit]["id"].values[0]
+        data.loc[data["id"] == habit_id, "logs"].values[0] = "Completed"
+        save_data()
+        st.success("Habit logged successfully!")
 
-# Show habit history
-st.subheader("Habit History")
-st.dataframe(df.sort_values(by=["Date", "Habit"], ascending=[False, True]))
+# Calendar View
+st.subheader("Scheduled Habits Calendar")
+if not data.empty:
+    events = []
+    for _, row in data.iterrows():
+        habit_name = row["name"]
+        start_date = row["start_date"]
+        end_date = row["end_date"]
+        repeat = row["repeat"]
+        
+        date_range = pd.date_range(start=start_date, end=end_date, freq={'Daily': 'D', 'Weekly': 'W', 'Monthly': 'M', 'Yearly': 'Y'}[repeat])
+        for date in date_range:
+            events.append((date, habit_name))
+    
+    calendar_df = pd.DataFrame(events, columns=["Date", "Habit"])
+    st.write("### Habit Calendar")
+    st.dataframe(calendar_df)
 
-# Generate GitHub-style calendar heatmap
-st.subheader("Habit Completion Heatmap")
-habit_selection = st.selectbox("Select a habit to visualize:", ["All Habits"] + list(df["Habit"].unique()))
-
-if habit_selection == "All Habits":
-    df_completed = df[df["Completed"] == True].copy()
-else:
-    df_completed = df[(df["Completed"] == True) & (df["Habit"] == habit_selection)].copy()
-
-if not df_completed.empty:
-    df_completed["Date"] = pd.to_datetime(df_completed["Date"])
-    df_completed["Count"] = 1
-    df_completed["Week"] = df_completed["Date"].dt.isocalendar().week
-    df_completed["DayOfWeek"] = df_completed["Date"].dt.dayofweek
-    df_completed["Month"] = df_completed["Date"].dt.strftime('%b')
-    heatmap_data = df_completed.groupby(["DayOfWeek", "Week"]).agg({"Count": "sum"}).reset_index()
-    heatmap_data = heatmap_data.pivot(index="DayOfWeek", columns="Week", values="Count").fillna(0)
+# Generate and share ICS Calendar
+st.subheader("Download Calendar")
+if not data.empty:
+    cal = Calendar()
+    for _, row in data.iterrows():
+        habit_name = row["name"]
+        start_date = row["start_date"]
+        end_date = row["end_date"]
+        repeat = row["repeat"]
+        
+        date_range = pd.date_range(start=start_date, end=end_date, freq={'Daily': 'D', 'Weekly': 'W', 'Monthly': 'M', 'Yearly': 'Y'}[repeat])
+        for date in date_range:
+            event = Event()
+            event.name = habit_name
+            event.begin = date.strftime("%Y-%m-%d")
+            cal.events.add(event)
     
-    fig, ax = plt.subplots(figsize=(16, 8))
-    heatmap = sns.heatmap(heatmap_data, cmap="crest", cbar=False, linewidths=2, linecolor='gray', ax=ax, square=True)
-    fig.patch.set_alpha(0)
-    ax.set_facecolor("none")
-    ax.set_title(f"{habit_selection} Completion Heatmap", color="white")
-    ax.set_xlabel("Week Number", color="white")
-    ax.set_ylabel("Day of Week", color="white")
-    ax.set_yticks([0, 3, 6])
-    ax.set_yticklabels(["Mon", "Thu", "Sun"], rotation=0, color="white")
-    ax.xaxis.label.set_color("white")
-    ax.yaxis.label.set_color("white")
-    ax.tick_params(axis='both', colors='white')
-    
-    # Highlight current week
-    if current_week in heatmap_data.columns:
-        ax.add_patch(plt.Rectangle((heatmap_data.columns.get_loc(current_week), 0), 1, len(heatmap_data), fill=False, edgecolor='red', lw=2))
-    
-    # Add week numbers on top
-    ax.xaxis.set_label_position('top')
-    ax.xaxis.tick_top()
-    ax.set_xticks(heatmap_data.columns)
-    ax.set_xticklabels(heatmap_data.columns, color="white", fontsize=10)
-    
-    # Add month labels only at the start of the month, positioned directly below the heatmap
-    unique_months = df_completed.groupby("Week").first().reset_index()
-    month_starts = unique_months.groupby("Month")["Week"].first().reset_index()
-    month_ticks = month_starts["Week"].values
-    month_labels = month_starts["Month"].values
-    ax_secondary = ax.secondary_xaxis(-0.1)
-    ax_secondary.set_xticks(month_ticks)
-    ax_secondary.set_xticklabels(month_labels, color="white", fontsize=12)
-    ax_secondary.spines['bottom'].set_visible(False)
-    ax_secondary.xaxis.set_tick_params(length=0)
-    
-    st.pyplot(fig)
+    ics_file = BytesIO()
+    ics_file.write(str(cal).encode("utf-8"))
+    ics_file.seek(0)
+    st.download_button(label="Download ICS Calendar", data=ics_file, file_name="habits.ics", mime="text/calendar")
