@@ -19,7 +19,7 @@ def load_data():
 def save_data(df):
     df.to_csv("habits.csv", index=False)
 
-# Generate dummy data for testing
+# Generate dummy data for testing (Optional)
 def generate_dummy_data():
     habits = ["Exercise", "Read", "Meditate", "Code", "Drink Water"]
     dates = pd.date_range(start="2024-01-01", periods=365).strftime("%Y-%m-%d").tolist()
@@ -29,8 +29,12 @@ def generate_dummy_data():
             data.append([date, habit, random.choice([True, False])])
     return pd.DataFrame(data, columns=["Date", "Habit", "Completed"])
 
-df = generate_dummy_data()
-save_data(df)
+# Optionally generate dummy data only if needed
+if st.sidebar.checkbox("Generate Dummy Data for Testing"):
+    df = load_data()
+    dummy_data = generate_dummy_data()
+    df = pd.concat([df, dummy_data], ignore_index=True).drop_duplicates()
+    save_data(df)
 
 # Streamlit UI
 st.title("Habit Tracker")
@@ -51,6 +55,19 @@ if st.button("Add Habit"):
         df = pd.concat([df, new_entry], ignore_index=True)
         save_data(df)
         st.rerun()
+
+# Log habit completion
+st.subheader("Log Habit Completion")
+habit_to_log = st.selectbox("Select a habit to log:", df["Habit"].unique())
+date_to_log = st.date_input("Select a date:", datetime.date.today())
+if st.button("Log Habit"):
+    date_str = str(date_to_log)
+    if not df[(df["Date"] == date_str) & (df["Habit"] == habit_to_log)].empty:
+        df.loc[(df["Date"] == date_str) & (df["Habit"] == habit_to_log), "Completed"] = True
+        save_data(df)
+        st.rerun()
+    else:
+        st.warning("This habit is not listed for the selected date. Please add it first.")
 
 # Display habits for today
 for index, row in df_today.iterrows():
