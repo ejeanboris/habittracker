@@ -77,16 +77,38 @@ if not df_completed.empty:
     df_completed["Count"] = 1
     df_completed["Week"] = df_completed["Date"].dt.isocalendar().week
     df_completed["DayOfWeek"] = df_completed["Date"].dt.dayofweek
+    df_completed["Month"] = df_completed["Date"].dt.strftime('%b')
     heatmap_data = df_completed.groupby(["DayOfWeek", "Week"]).agg({"Count": "sum"}).reset_index()
     heatmap_data = heatmap_data.pivot(index="DayOfWeek", columns="Week", values="Count").fillna(0)
     
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.heatmap(heatmap_data, cmap="Greens", cbar=False, linewidths=1, linecolor='gray', ax=ax, square=True)
+    fig, ax = plt.subplots(figsize=(16, 8))
+    heatmap = sns.heatmap(heatmap_data, cmap="crest", cbar=False, linewidths=2, linecolor='gray', ax=ax, square=True)
     fig.patch.set_alpha(0)
     ax.set_facecolor("none")
-    ax.set_title(f"{habit_selection} Completion Heatmap")
-    ax.set_xlabel("Week Number")
-    ax.set_ylabel("Day of Week")
-    ax.set_yticks(range(7))
-    ax.set_yticklabels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], rotation=0)
+    ax.set_title(f"{habit_selection} Completion Heatmap", color="white")
+    ax.set_xlabel("Week Number", color="white")
+    ax.set_ylabel("Day of Week", color="white")
+    ax.set_yticks([0, 3, 6])
+    ax.set_yticklabels(["Mon", "Thu", "Sun"], rotation=0, color="white")
+    ax.xaxis.label.set_color("white")
+    ax.yaxis.label.set_color("white")
+    ax.tick_params(axis='both', colors='white')
+    
+    # Add week numbers on top
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.tick_top()
+    ax.set_xticks(heatmap_data.columns)
+    ax.set_xticklabels(heatmap_data.columns, color="white", fontsize=10)
+    
+    # Add month labels only at the start of the month, positioned directly below the heatmap
+    unique_months = df_completed.groupby("Week").first().reset_index()
+    month_starts = unique_months.groupby("Month")["Week"].first().reset_index()
+    month_ticks = month_starts["Week"].values
+    month_labels = month_starts["Month"].values
+    ax_secondary = ax.secondary_xaxis(-0.1)
+    ax_secondary.set_xticks(month_ticks)
+    ax_secondary.set_xticklabels(month_labels, color="white", fontsize=12)
+    ax_secondary.spines['bottom'].set_visible(False)
+    ax_secondary.xaxis.set_tick_params(length=0)
+    
     st.pyplot(fig)
