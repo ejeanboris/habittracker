@@ -77,12 +77,14 @@ if not df_completed.empty:
     df_completed["Count"] = 1
     df_completed["Week"] = df_completed["Date"].dt.isocalendar().week
     df_completed["DayOfWeek"] = df_completed["Date"].dt.dayofweek
-    heatmap_data = df_completed.groupby(["Week", "DayOfWeek"]).agg({"Count": "sum"}).reset_index()
-    heatmap_data = heatmap_data.pivot(index="Week", columns="DayOfWeek", values="Count").fillna(0)
+    heatmap_data = df_completed.groupby(["DayOfWeek", "Week"]).agg({"Count": "sum"}).reset_index()
+    heatmap_data = heatmap_data.pivot(index="DayOfWeek", columns="Week", values="Count").fillna(0)
     
     fig, ax = plt.subplots(figsize=(10, 5))
     sns.heatmap(heatmap_data, cmap="Greens", cbar=False, linewidths=0.5, linecolor='gray', ax=ax)
     ax.set_title(f"{habit_selection} Completion Heatmap")
-    ax.set_xlabel("Day of Week")
-    ax.set_ylabel("Week Number")
+    ax.set_xlabel("Week Number")
+    ax.set_ylabel("Day of Week")
+    ax.set_yticks(range(7))
+    ax.set_yticklabels(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
     st.pyplot(fig)
