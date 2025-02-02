@@ -4,3 +4,4 @@ pip-chill==1.0.3
 plotly==5.24.1
 streamlit==1.41.1
 vobject==0.9.9
+seaborn
