@@ -81,7 +81,9 @@ if not df_completed.empty:
     heatmap_data = heatmap_data.pivot(index="DayOfWeek", columns="Week", values="Count").fillna(0)
     
     fig, ax = plt.subplots(figsize=(10, 5))
-    sns.heatmap(heatmap_data, cmap="Greens", cbar=False, linewidths=0.5, linecolor='gray', ax=ax)
+    sns.heatmap(heatmap_data, cmap="Greens", cbar=False, linewidths=1, linecolor='gray', ax=ax, square=True)
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
     ax.set_title(f"{habit_selection} Completion Heatmap")
     ax.set_xlabel("Week Number")
     ax.set_ylabel("Day of Week")
