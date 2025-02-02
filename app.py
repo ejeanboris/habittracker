@@ -86,5 +86,5 @@ if not df_completed.empty:
     ax.set_xlabel("Week Number")
     ax.set_ylabel("Day of Week")
     ax.set_yticks(range(7))
-    ax.set_yticklabels(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+    ax.set_yticklabels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], rotation=0)
     st.pyplot(fig)
