@@ -47,6 +47,15 @@ df = load_data()
 
 df_today = df[df["Date"] == today]
 
+# Check off daily habits section at the top
+st.subheader("Check Off Today's Habits")
+for index, row in df_today.iterrows():
+    checked = st.checkbox(row["Habit"], value=row["Completed"], key=f"habit_{index}")
+    if checked != row["Completed"]:
+        df.at[index, "Completed"] = checked
+        save_data(df)
+        st.rerun()
+
 st.subheader("Track Today's Habits")
 habit = st.text_input("Add a new habit:")
 if st.button("Add Habit"):
@@ -68,14 +77,6 @@ if st.button("Log Habit"):
         st.rerun()
     else:
         st.warning("This habit is not listed for the selected date. Please add it first.")
-
-# Display habits for today
-for index, row in df_today.iterrows():
-    checked = st.checkbox(row["Habit"], value=row["Completed"], key=f"habit_{index}")
-    if checked != row["Completed"]:
-        df.at[index, "Completed"] = checked
-        save_data(df)
-        st.rerun()
 
 # Show habit history
 st.subheader("Habit History")
