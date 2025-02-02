@@ -36,6 +36,7 @@ save_data(df)
 st.title("Habit Tracker")
 
 today = str(datetime.date.today())
+current_week = datetime.date.today().isocalendar()[1]
 
 # Load existing data
 df = load_data()
@@ -93,6 +94,10 @@ if not df_completed.empty:
     ax.xaxis.label.set_color("white")
     ax.yaxis.label.set_color("white")
     ax.tick_params(axis='both', colors='white')
+    
+    # Highlight current week
+    if current_week in heatmap_data.columns:
+        ax.add_patch(plt.Rectangle((heatmap_data.columns.get_loc(current_week), 0), 1, len(heatmap_data), fill=False, edgecolor='red', lw=2))
     
     # Add week numbers on top
     ax.xaxis.set_label_position('top')
