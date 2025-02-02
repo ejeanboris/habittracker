@@ -173,3 +173,5 @@ cython_debug/
 .pypirc
 
 habits.csv
+setenv.sh
+habits.csv
