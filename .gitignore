@@ -175,3 +175,4 @@ cython_debug/
 habits.csv
 setenv.sh
 habits.csv
+habit_calendar.ics
