@@ -74,7 +74,7 @@ def update_and_save_ics():
                 event = Event()
                 event.name = habit_name
                 event.begin = date.strftime("%Y-%m-%d")
-                
+                event.make_all_day()  # This ensures it's treated as an all-day event
                 # Add completion percentage as event description
                 completion = logs.get(str(date.date()), 0)
                 event.description = f"Completion: {completion}%"
@@ -239,3 +239,195 @@ if not data.empty:
     
     fig.update_layout(title="Habit Calendar", xaxis_title="Date", yaxis_title="Habits", showlegend=True)
     st.plotly_chart(fig)
+
+
+
+
+
+
+
+
+
+
+import numpy as np
+
+# 📆 Generate GitHub-style calendar heatmap using Plotly
+st.subheader("Habit Completion Heatmap")
+habit_selection = st.selectbox("Select a habit to visualize:", ["All Habits"] + list(data["name"].unique()))
+
+# Prepare data for the heatmap
+habit_logs = []
+for _, row in data.iterrows():
+    habit_name = row["name"]
+    logs = row["logs"]
+    if isinstance(logs, str):
+        logs = json.loads(logs)  # Ensure logs are converted to a dictionary
+    for date, completion in logs.items():
+        habit_logs.append({"Habit": habit_name, "Date": date, "Completion": completion})
+
+# Convert to DataFrame
+df_completed = pd.DataFrame(habit_logs)
+df_completed["Date"] = pd.to_datetime(df_completed["Date"])
+
+# Apply filtering
+if habit_selection != "All Habits":
+    df_completed = df_completed[df_completed["Habit"] == habit_selection]
+
+# Ensure at least one entry exists
+if df_completed.empty:
+    st.warning("No habit data available. Displaying a blank heatmap.")
+    df_completed = pd.DataFrame(columns=["DayOfWeek", "Week", "Completion", "Date"])
+
+# Extract necessary time fields
+df_completed["Week"] = df_completed["Date"].dt.isocalendar().week
+df_completed["DayOfWeek"] = df_completed["Date"].dt.dayofweek  # 0=Monday, 6=Sunday
+df_completed["DayNumber"] = df_completed["Date"].dt.day  # Get the actual numeric day of the month
+
+# 🔹 FIX: Ensure all 7 days (0-6) and weeks (1-52) are present
+all_weeks = list(range(1, 53))  # Full year (52 weeks)
+all_days = list(range(0, 7))  # Full week (Monday to Sunday)
+
+# Generate a full calendar grid
+full_grid = []
+for week in all_weeks:
+    for day in all_days:
+        try:
+            guessed_date = pd.Timestamp.strptime(f"2024 {week} {day}", "%Y %W %w").date()
+            full_grid.append({"DayOfWeek": day, "Week": week, "Completion": 0, "DayNumber": guessed_date.day})
+        except:
+            full_grid.append({"DayOfWeek": day, "Week": week, "Completion": 0, "DayNumber": np.nan})  # Keep NaN for invalid dates
+
+# Convert full grid to DataFrame
+full_grid_df = pd.DataFrame(full_grid)
+
+# 🔹 Merge with actual habit data (Fill missing values with 0%)
+df_completed = df_completed.groupby(["DayOfWeek", "Week"], as_index=False).agg({"Completion": "sum", "DayNumber": "first"})
+df_filled = full_grid_df.merge(df_completed, on=["DayOfWeek", "Week"], how="left")
+df_filled["Completion"] = df_filled["Completion_y"].fillna(0)
+df_filled["DayNumber"] = df_filled["DayNumber_x"].fillna(" ")  # Ensure every box has a visible day number
+df_filled = df_filled[["DayOfWeek", "Week", "Completion", "DayNumber"]]
+
+# 🔹 Pivot table for heatmap
+heatmap_data = df_filled.pivot(index="DayOfWeek", columns="Week", values="Completion")
+day_numbers = df_filled.pivot(index="DayOfWeek", columns="Week", values="DayNumber")
+
+# Ensure valid x and y values
+weeks = heatmap_data.columns.tolist()
+days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]  # Full 7-day week
+
+# 🔹 Ensure `z_values` is a 2D array
+z_values = heatmap_data.values
+if z_values.ndim == 1:
+    z_values = np.expand_dims(z_values, axis=0)  # Convert to 2D
+
+# **Ensure day numbers are displayed correctly and avoid `ValueError`**
+day_texts = np.array([[str(day_numbers.iloc[i, j]) if pd.notna(day_numbers.iloc[i, j]) and str(day_numbers.iloc[i, j]).strip() != "" else " "
+                        for j in range(day_numbers.shape[1])] for i in range(day_numbers.shape[0])])
+
+# **🔹 Adjust figure size to ensure SQUARE CELLS**
+cell_size = 50  # Increase cell size to ensure readability
+fig_width = cell_size * len(weeks)  # Scale width based on number of weeks
+fig_height = cell_size * len(days)  # Scale height based on 7 days
+
+# Prepare Plotly heatmap
+fig = go.Figure(data=go.Heatmap(
+    z=z_values,
+    x=weeks,  # Weeks on the x-axis
+    y=list(range(0, 7)),  # Ensure all 7 days are plotted
+    colorscale="blues",  # ✅ Valid colorscale
+    showscale=False,  # Always show color scale
+    hoverinfo="x+y+z",
+    xgap=5,  # 🔹 Increase spacing to avoid overlap
+    ygap=5,  # 🔹 Increase spacing to avoid overlap
+    text=day_texts,  # **Overlay day numbers**
+    texttemplate="%{text}",  # **Ensure text is visible**
+    textfont={"size": 16, "color": "green", "family": "Arial Black"},  # **Make text GREEN and larger**
+))
+
+# Transparent background
+fig.update_layout(
+    title=f"{habit_selection} Completion Heatmap",
+    title_font_color="white",
+    xaxis=dict(
+        title="Week Number",
+        tickmode="array",
+        tickvals=weeks,
+        ticktext=[str(week) for week in weeks],
+        showgrid=False,
+        zeroline=False,
+        tickfont=dict(color="white"),
+    ),
+    yaxis=dict(
+        title="Day of Week",
+        tickmode="array",
+        tickvals=[0, 3, 6],  # Only show labels for Mon, Thu, Sun
+        ticktext=["Mon", "Thu", "Sun"],
+        showgrid=False,
+        zeroline=False,
+        tickfont=dict(color="white"),
+    ),
+    autosize=False,
+    height=fig_height,  # 🔹 Dynamically set height to keep squares
+    width=fig_width,  # 🔹 Dynamically set width to keep squares
+    plot_bgcolor="rgba(0,0,0,0)",  # Transparent background
+    paper_bgcolor="rgba(0,0,0,0)",  # Transparent background
+)
+
+# Highlight the current week
+current_week = datetime.date.today().isocalendar().week
+if current_week in weeks:
+    fig.add_shape(
+        type="rect",
+        xref="x", yref="paper",
+        x0=current_week - 0.5, x1=current_week + 0.5,
+        y0=0, y1=1,
+        line=dict(color="red", width=2),
+    )
+
+# 🔹 Ensure the chart is actually rendered
+st.write("Plotly Heatmap Ready")
+
+# Display in Streamlit
+st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
+
+
+
+# **🔹 Section to log past habit completion**
+st.subheader("Log Habit Completion for Any Date")
+
+# **🔹 Date selector (allows logging for past dates)**
+selected_date = st.date_input("Select Date", datetime.date.today())
+
+# **🔹 Show habits scheduled for the selected date**
+if not data.empty:
+    selected_habits = data[
+        (pd.to_datetime(data["start_date"]).dt.date <= selected_date) & 
+        (pd.to_datetime(data["end_date"]).dt.date >= selected_date)
+    ]
+
+    if not selected_habits.empty:
+        for idx, row in selected_habits.iterrows():
+            habit_id = row["id"]
+            logs = row["logs"]
+            
+            if isinstance(logs, str):  # Ensure logs are treated as a dictionary
+                logs = json.loads(logs)
+
+            # **Retrieve previously logged completion or default to 0%**
+            completion = logs.get(str(selected_date), 0)
+
+            # **Slider to log habit completion percentage**
+            new_completion = st.slider(f"{row['name']} completion % ({selected_date})", 0, 100, int(completion), key=f"{habit_id}_{selected_date}")
+
+            # **Only update if value changed**
+            if new_completion != completion:
+                logs[str(selected_date)] = new_completion
+                data.at[idx, "logs"] = json.dumps(logs)
+                save_data()
+                st.success(f"✅ Logged {new_completion}% completion for '{row['name']}' on {selected_date}")
+    else:
+        st.write("No scheduled habits for the selected date.")
+else:
+    st.write("No habits available.")
