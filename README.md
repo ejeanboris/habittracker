@@ -1,6 +1,13 @@
-Understood. Since the Docker image is available on Docker Hub as `remi/habittracker`, you can set up the HabitTracker application without building the image locally. Here's the updated installation section, along with the `docker-compose.yml` and `.env` files:
+# HabitTracker
 
----
+HabitTracker is a tool designed to help users monitor and manage their daily habits effectively. By tracking activities, users can build consistency and achieve their personal goals.
+
+## Features
+
+- **Daily Habit Tracking**: Log and monitor your habits on a daily basis.
+- **Progress Visualization**: View your habit completion rates over time through intuitive charts.
+- **Reminders**: Set up notifications to remind you of pending habits.
+- **Customization**: Add, edit, or remove habits as per your requirements.
 
 ## Installation
 
@@ -63,3 +70,35 @@ To set up the HabitTracker application using Docker, follow these steps:
 - If you need to set additional environment variables for your application, you can add them to the `.env` file and reference them in the `docker-compose.yml` file under the `environment` section.
 
 By following these steps, you can set up and run the HabitTracker application using the pre-built Docker image from Docker Hub. 
+
+## Usage
+
+1. **Add a New Habit**:
+   - Navigate to the "Add Habit" section.
+   - Enter the habit name and desired frequency.
+   - Save the habit to start tracking.
+
+2. **Log a Habit**:
+   - On the dashboard, find the habit you want to log.
+   - Mark it as completed for the day.
+
+3. **View Progress**:
+   - Go to the "Progress" section to see charts displaying your habit completion over time.
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch: `git checkout -b feature/YourFeature`.
+3. Commit your changes: `git commit -m 'Add YourFeature'`.
+4. Push to the branch: `git push origin feature/YourFeature`.
+5. Open a pull request.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For questions or feedback, please open a discussion.
