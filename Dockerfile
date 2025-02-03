@@ -23,7 +23,7 @@ RUN mkdir /config
 EXPOSE 8501
 
 # Declare a volume (this creates a mount point inside the container)
-VOLUME ["/app"]
+VOLUME ["/app/config"]
 
 # Command to run the Streamlit app
 CMD ["python","-m","streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

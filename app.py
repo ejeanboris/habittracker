@@ -9,8 +9,8 @@ from ics import Calendar, Event
 import plotly.graph_objects as go
 import requests
 
-DATA_FILE = "habits.csv"
-ICS_FILE_PATH = "habit_calendar.ics"
+DATA_FILE = "config/habits.csv"
+ICS_FILE_PATH = "config/habit_calendar.ics"
 
 # Nextcloud Configuration
 NEXTCLOUD_URL = os.getenv("NEXTCLOUD_URL")
